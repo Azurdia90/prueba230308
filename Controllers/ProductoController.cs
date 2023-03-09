@@ -6,7 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
-namespace prueba230308.Models
+using SpreadsheetLight;
+
+using prueba230308.Models;
+
+namespace prueba230308.Controllers
 {
     public class ProductoController : Controller
     {
@@ -20,7 +24,42 @@ namespace prueba230308.Models
         // GET: Producto
         public async Task<IActionResult> Index()
         {
-              return View(await _context.Productos.ToListAsync());
+            return View(await _context.Productos.ToListAsync());
+        }
+
+        public async Task<IActionResult> Export()
+        {
+            String pathfile = AppDomain.CurrentDomain.BaseDirectory + "Catalogo_Productos.xls";
+            SLDocument sldocument = new SLDocument();
+
+            System.Data.DataTable table_productos = new System.Data.DataTable();
+
+            table_productos.Columns.Add("Id", typeof(int));
+            table_productos.Columns.Add("Nombre", typeof(string));
+            table_productos.Columns.Add("Precio", typeof(int));
+            table_productos.Columns.Add("UnidadMedida", typeof(string));
+
+            foreach( var prod in _context.Productos.ToList() )
+            {
+                table_productos.Rows.Add(prod.Id, prod.Nombre, prod.Precio, prod.UnidadMedida);
+            }
+
+            sldocument.ImportDataTable(1,1,table_productos,true);
+            sldocument.SaveAs(pathfile);
+
+            var bytes = System.IO.File.ReadAllBytes(pathfile);
+
+            const string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            HttpContext.Response.ContentType = contentType;
+            HttpContext.Response.Headers.Add("Access-Control-Expose-Headers", "Content-Disposition");
+
+            var fileContentResult = new FileContentResult(bytes, contentType)
+            {
+                FileDownloadName = "Catalogo Productos.xls"
+            };
+
+
+            return fileContentResult;
         }
 
         // GET: Producto/Details/5
@@ -146,14 +185,14 @@ namespace prueba230308.Models
             {
                 _context.Productos.Remove(producto);
             }
-            
+
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
         private bool ProductoExists(int id)
         {
-          return _context.Productos.Any(e => e.Id == id);
+            return _context.Productos.Any(e => e.Id == id);
         }
     }
 }
